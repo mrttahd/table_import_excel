@@ -11,28 +11,54 @@ $is_admin_page = is_admin() && current_user_can('administrator');
     <h2>Dữ liệu hiện tại trong bảng</h2>
 
     <div style="margin-bottom: 20px;">
-        <div>
-            <label for="filter_so_tien">Lọc theo Số tiền:</label>
-            <select id="filter_so_tien">
-                <option value="">Tất cả</option>
-                <option value="0-500000">0 - 500.000</option>
-                <option value="500001-5000000">500.001 - 5.000.000</option>
-                <option value="5000001-10000000">5.000.001 - 10.000.000</option>
-                <option value="10000001">Lớn hơn 10.000.000</option>
-            </select>
-        </div>
-        <div>
-            <label for="filter_ten_ngan_hang">Lọc theo Tên Ngân hàng:</label>
-            <select id="filter_ten_ngan_hang">
-                <option value="">Tất cả</option>
-                <?php
-                $ten_ngan_hang_results = $wpdb->get_col("SELECT DISTINCT ten_ngan_hang FROM $table_name ORDER BY ten_ngan_hang");
-                foreach ($ten_ngan_hang_results as $ten_ngan_hang) {
-                    echo '<option value="' . esc_attr($ten_ngan_hang) . '">' . esc_html($ten_ngan_hang) . '</option>';
-                }
-                ?>
-            </select>
-        </div>
+        <table>
+            <tr>
+                <td>
+                    <label for="filter_so_tien">Lọc theo Số tiền:</label>
+                </td>
+                <td>
+                    <select id="filter_so_tien">
+                        <option value="">Tất cả</option>
+                        <option value="0-500000">0 - 500.000</option>
+                        <option value="500001-5000000">500.001 - 5.000.000</option>
+                        <option value="5000001-10000000">5.000.001 - 10.000.000</option>
+                        <option value="10000001">Lớn hơn 10.000.000</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                <label for="filter_ten_ngan_hang">Lọc theo Tên Ngân hàng:</label>
+                </td>
+                <td>
+                    <select id="filter_ten_ngan_hang">
+                        <option value="">Tất cả</option>
+                        <?php
+                        $ten_ngan_hang_results = $wpdb->get_col("SELECT DISTINCT ten_ngan_hang FROM $table_name ORDER BY ten_ngan_hang");
+                        foreach ($ten_ngan_hang_results as $ten_ngan_hang) {
+                            echo '<option value="' . esc_attr($ten_ngan_hang) . '">' . esc_html($ten_ngan_hang) . '</option>';
+                        }
+                        ?>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="filter_from_date">Từ ngày:</label>
+                </td>
+                <td>
+                    <input type="date" id="filter_from_date" style="min-width: 150px;">
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="filter_to_date">Đến ngày:</label>
+                </td>
+                <td>
+                    <input type="date" id="filter_to_date" style="min-width: 150px;">
+                </td>
+            </tr>
+        </table>
     </div>
 
     <table id="data-table" class="wp-list-table widefat fixed striped">
@@ -119,33 +145,78 @@ $is_admin_page = is_admin() && current_user_can('administrator');
                 table.draw();
             });
 
-            $.fn.dataTable.ext.search.push(
-                function(settings, data, dataIndex) {
-                    var soTien = parseInt(data[2].replace(/\./g, '').trim()) || 0;
-                    var filterValue = $('#filter_so_tien').val();
-
-                    if (filterValue === "") {
-                        return true;
-                    }
-
-                    switch (filterValue) {
-                        case "0-500000":
-                            return soTien >= 0 && soTien <= 500000;
-                        case "500001-5000000":
-                            return soTien >= 500001 && soTien <= 5000000;
-                        case "5000001-10000000":
-                            return soTien >= 5000001 && soTien <= 10000000;
-                        case "10000001":
-                            return soTien > 10000000;
-                    }
-                    return true;
-                }
-            );
+            $(document).on('input', '#filter_from_date, #filter_to_date', function() {
+                table.draw();
+            });
 
             $('#filter_ten_ngan_hang').on('change', function() {
                 var filterValue = $(this).val();
                 table.column(4).search(filterValue).draw();
             });
+            $.fn.dataTable.ext.search.push(
+                function(settings, data, dataIndex) {
+                    var soTien = parseInt(data[1].replace(/\./g, '').trim()) || 0;
+                    var filterValue = $('#filter_so_tien').val();
+                    var ngay = data[1];
+                    var fromDate = $('#filter_from_date').val();
+                    var toDate = $('#filter_to_date').val();
+
+                    if (filterValue !== "") {
+                        switch (filterValue) {
+                            case "0-500000":
+                                if (soTien < 0 || soTien > 500000) return false;
+                                break;
+                            case "500001-5000000":
+                                if (soTien < 500001 || soTien > 5000000) return false;
+                                break;
+                            case "5000001-10000000":
+                                if (soTien < 5000001 || soTien > 10000000) return false;
+                                break;
+                            case "10000001":
+                                if (soTien <= 10000000) return false;
+                                break;
+                        }
+                    }
+
+                    if (fromDate) {
+                        var formattedFromDate = new Date(fromDate);
+                        var recordDate = new Date(ngay.split("/").reverse().join("-"));
+                        if (recordDate < formattedFromDate) return false;
+                    }
+
+                    if (toDate) {
+                        var formattedToDate = new Date(toDate);
+                        var recordDate = new Date(ngay.split("/").reverse().join("-"));
+                        if (recordDate > formattedToDate) return false;
+                    }
+
+                    return true;
+                }
+            );
+            
+            // $.fn.dataTable.ext.search.push(
+            //     function(settings, data, dataIndex) {
+            //         var soTien = parseInt(data[2].replace(/\./g, '').trim()) || 0;
+            //         var filterValue = $('#filter_so_tien').val();
+
+            //         if (filterValue === "") {
+            //             return true;
+            //         }
+
+            //         switch (filterValue) {
+            //             case "0-500000":
+            //                 return soTien >= 0 && soTien <= 500000;
+            //             case "500001-5000000":
+            //                 return soTien >= 500001 && soTien <= 5000000;
+            //             case "5000001-10000000":
+            //                 return soTien >= 5000001 && soTien <= 10000000;
+            //             case "10000001":
+            //                 return soTien > 10000000;
+            //         }
+            //         return true;
+            //     }
+            // );
+
         });
     </script>
 </div>
