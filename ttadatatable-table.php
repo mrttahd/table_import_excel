@@ -61,7 +61,7 @@ $is_admin_page = is_admin() && current_user_can('administrator');
         </table>
     </div>
 
-    <table id="data-table" class="wp-list-table widefat fixed striped">
+    <table id="data-table" class="wp-list-table widefat striped">
         <thead>
             <tr>
                 <th>ID</th>
